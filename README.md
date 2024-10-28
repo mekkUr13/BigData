@@ -1,0 +1,2 @@
+# BigData
+ELTE BigData Gyakorlat
