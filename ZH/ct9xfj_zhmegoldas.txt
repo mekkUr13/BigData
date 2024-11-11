@@ -1,0 +1,146 @@
+
+rdd feladatokhoz:
+from pyspark import SparkConf, SparkContext
+
+conf = SparkConf()
+sc = SparkContext.getOrCreate()
+x = "MWűGkyösdwinko Qau fSJpDaTrykv!w"
+
+rdd = sc.parallelize([x[i:i+2] for i in range(0, len(x), 2)])
+res = rdd.map(lambda x: x[0]).collect()
+
+print("".join(res))
+
+
+1. feladat
+data = sc.textFile('weboldalak.txt')\
+.map(lambda l: l.upper())\
+.map(lambda l: (l.split()[0], l[l.index(l.split()[0])+len(l.split()[0]):].count('ELTE'), len(l.split())-1))\
+.filter(lambda x: x[2] > 10)\
+.max(key= lambda x: x[1])\
+
+print(data)
+
+output:
+('ELTE.HU', 6, 52)
+
+2. feladat
+
+positive = ['awesome', 'great', 'masterpiece', 'enjoyable']
+negative = ['worst', 'bad', 'boring', 'loud']
+
+def grade(inp):
+  goodw = [1 for w in inp.split() if w in positive]
+  badw = [1 for w in inp.split() if w in negative]
+
+  if goodw > badw:
+    return "good"
+  elif badw > goodw:
+    return "bad"
+  else:
+    return "neutral"
+
+output:
+(good, 7), (bad, 5), (neutral, 11)
+
+
+data = sc.textFile('sentiment_input.txt')\
+.map(lambda l: l.replace(':',"").replace(",","").replace(".", "").replace("!","").replace('"',"").lower())\
+.map(lambda l: grade(l))\
+.countByValue()
+
+print(f"(good, {data['good']}), (bad, {data['bad']}), (neutral, {data['neutral']})")
+---------
+Dataframes feladatokhoz:
+
+from pyspark.sql import SparkSession
+from pyspark.sql import *
+from pyspark.sql.functions import *
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+
+spark = SparkSession.builder.getOrCreate()
+
+books = spark.read.format("csv")\
+.option('header', True)\
+.option("inferschema", True)\
+.load("books.csv")
+
+orders = spark.read.format("csv")\
+.option('header', True)\
+.option("inferschema", True)\
+.load("orders.csv")
+
+books.show()
+orders.show()
+
+3. feladat
+
+from pyspark.sql.functions import col
+
+books\
+.groupBy(col("publisher"))\
+.agg(countDistinct(col("title")).alias("Cnt"))\
+.orderBy(col("Cnt").desc())\
+.limit(1)\
+.select("publisher")\
+.show()
+
+output:
++---------------+
+|      publisher|
++---------------+
+|Books on Demand|
++---------------+
+
+4. feladat
+
+from pyspark.sql.functions import sum
+orders\
+.groupBy(col("sessionID"))\
+.agg(sum(col("order")).alias("ocnt"))\
+.where(col("ocnt") > 0)\
+.agg(avg(col("ocnt")))\
+.show()
+
+output:
+
++----------------+
+|       avg(ocnt)|
++----------------+
+|1.33439033597584|
++----------------+
+
+5. felaadat
+
+
+bought = orders\
+.where((col("order") == col("basket")) & (col("basket") > 0))\
+.count()
+
+not_bought = orders\
+.where((col("order") != col("basket")) & (col("basket") > 0))\
+.count()
+
+output:
+(4069, 40919)
+
+print(bought, not_bought)
+
+6. feladat
+
+from pyspark.sql.functions import sum
+orders.alias("O")\
+.groupBy(col("itemID"))\
+.agg(sum(col("click")).alias("sumc"))\
+.join(books.alias("B"), col("O.itemID") == col("B.itemID"), "inner")\
+.select("title","sumc")\
+.orderBy(col("sumc").desc())\
+.limit(1)\
+.show()
+
+output:
++--------------------+----+
+|               title|sumc|
++--------------------+----+
+|Harry Potter Box ...|3229|
++--------------------+----+
